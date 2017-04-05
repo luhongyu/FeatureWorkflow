@@ -19,13 +19,18 @@ class LoadFeatures:
         self.f_datadic = {}
         
     def show_features(self, return_list=True):
+        num_features = set(self.fea_file_dic.keys())
+        num_features = num_features - set(self.vec_fea_dic.keys())
 
-        fea_names = prettytable.PrettyTable()
-        fea_names.add_column("feature_name", sorted(self.fea_file_dic.keys()))
-        fea_names.align["feature_name"] = "l" 
-        print fea_names
+        pair_features = set(json.load(open("/mnt/work/liubin/recsys2017/features/pair_features.json")))
+
+        all_features = num_features | pair_features
+        # fea_names = prettytable.PrettyTable()
+        # fea_names.add_column("feature_name", sorted(all_features))
+        # fea_names.align["feature_name"] = "l" 
+        # print fea_names
         if return_list:
-            return sorted(self.fea_file_dic.keys())
+            return sorted(all_features)
 
     def add_feature_files(self, new_feature_file, ftype="num"):
         print "---------- old feature files ----------\n"
