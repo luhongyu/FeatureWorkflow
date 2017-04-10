@@ -200,6 +200,7 @@ class PairFeatures:
             keyset = self.cookie[icol]
         else:
             keyset = set(df_pair[icol])
+            self.cookie[icol] = keyset
 
         for tkey in keyset:
             ids = np.array(df_pair[icol] == tkey)
@@ -231,9 +232,9 @@ class Convert2feature:
             self.ifeatures = []
             self.pfeatures = []
             for tf in feature_list:
-                if tf[0] == "u" or tf[:2] == "lb":
+                if tf[0] == "u" or tf[:2] == "lb" or (tf[:3] == "ori" and tf[4] == "u"):
                     self.ufeatures.append(tf)
-                elif tf[0] == "i":
+                elif tf[0] == "i" or (tf[:3] == "ori" and tf[4] == "u"):
                     self.ifeatures.append(tf)
                 elif tf[0] == "p":
                     self.pfeatures.append(tf)
