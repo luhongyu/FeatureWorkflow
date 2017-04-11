@@ -8,21 +8,22 @@ import time
 import os
 from collections import defaultdict, Counter
 import feature_config as fconf
+import config
 
 class LoadFeatures:
     def __init__(self):
-        self.fea_file_addr = "/mnt/work/liubin/recsys2017/features/"
-        self.fea_file_dic = json.load(open("/mnt/work/liubin/recsys2017/config/feature_file_dict.json"))
-        self.vec_fea_dic = json.load(open("/mnt/work/liubin/recsys2017/config/vec_fea_dict.json"))
-        self.uidlist = json.load(open("/mnt/work/liubin/recsys2017/features/user_ids.json"))
-        self.iidlist = json.load(open("/mnt/work/liubin/recsys2017/features/item_ids.json"))
+        self.fea_file_addr = config.path + "features/"
+        self.fea_file_dic = json.load(open(config.path + "config/feature_file_dict.json"))
+        self.vec_fea_dic = json.load(open(config.path + "config/vec_fea_dict.json"))
+        self.uidlist = json.load(open(config.path + "features/user_ids.json"))
+        self.iidlist = json.load(open(config.path + "features/item_ids.json"))
         self.f_datadic = {}
         
     def show_features(self, return_list=True):
         num_features = set(self.fea_file_dic.keys())
         num_features = num_features - set(self.vec_fea_dic.keys())
 
-        pair_features = set(json.load(open("/mnt/work/liubin/recsys2017/features/pair_features.json")))
+        pair_features = set(json.load(open(config.path + "features/pair_features.json")))
 
         all_features = num_features | pair_features
         # fea_names = prettytable.PrettyTable()
@@ -34,7 +35,7 @@ class LoadFeatures:
 
     def add_feature_files(self, new_feature_file, ftype="num"):
         print "---------- old feature files ----------\n"
-        feafiles = json.load(open("/mnt/work/liubin/recsys2017/config/feature_files.json"))
+        feafiles = json.load(open(config.path + "config/feature_files.json"))
         print feafiles
 
         if ftype == "num":
@@ -44,10 +45,10 @@ class LoadFeatures:
 
         print "---------- new feature files ----------\n"
         print feafiles
-        json.dump(feafiles, open("/mnt/work/liubin/recsys2017/config/feature_files.json", "w"))
+        json.dump(feafiles, open(config.path + "config/feature_files.json", "w"))
         
     def reload_config(self):
-        self.fea_file_dic = json.load(open("/mnt/work/liubin/recsys2017/config/feature_file_dict.json"))
+        self.fea_file_dic = json.load(open(config.path + "config/feature_file_dict.json"))
         self.show_features(return_list=False)
         
     def load_features(self, flist, key="u", idlist=None):
@@ -95,7 +96,7 @@ class LoadFeatures:
 
         df_feas.to_csv(self.fea_file_addr + fname, index=None, sep="\t")    
 
-        fea_files_addr = "/mnt/work/liubin/recsys2017/config/feature_files.json"
+        fea_files_addr = config.path + "config/feature_files.json"
 
         with open(fea_files_addr) as inf:
             fea_files = json.load(inf)
@@ -106,7 +107,7 @@ class LoadFeatures:
             fea_files['vec_features'].append(self.fea_file_addr + fname)
 
         json.dump(fea_files, open(fea_files_addr, 'w'), indent=True)
-        os.system("python /mnt/work/liubin/recsys2017/config/BuildFeatureFileDict.py")
+        os.system("python " + config.path + "config/BuildFeatureFileDict.py")
         
         self.reload_config()
         return "saved feature file"
@@ -234,7 +235,7 @@ class Convert2feature:
             for tf in feature_list:
                 if tf[0] == "u" or tf[:2] == "lb" or (tf[:3] == "ori" and tf[4] == "u"):
                     self.ufeatures.append(tf)
-                elif tf[0] == "i" or (tf[:3] == "ori" and tf[4] == "u"):
+                elif tf[0] == "i" or (tf[:3] == "ori" and tf[4] == "i"):
                     self.ifeatures.append(tf)
                 elif tf[0] == "p":
                     self.pfeatures.append(tf)
@@ -243,7 +244,7 @@ class Convert2feature:
             print "init with %d user features, %d item features, %d pair features, Total: %d" %(len(self.ufeatures), len(self.ifeatures), len(self.pfeatures), len(feature_list))
             self.features_names = feature_list
 
-        df_target_user = pd.read_csv("/mnt/work/haobin/recsys2017/dataset/origindataset/targetUsers.csv", sep="\t")
+        df_target_user = pd.read_csv(config.path + "dataset/origindataset/targetUsers.csv", sep="\t")
         self.target_users = list(df_target_user.iloc[:,0])
                     
         # find feature needed
