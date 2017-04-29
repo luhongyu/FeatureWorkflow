@@ -1,1 +1,1 @@
-path = "/home/shisy13/liubin/recsys2017/"
+path = "/mnt/work/liubin/recsys2017online/"

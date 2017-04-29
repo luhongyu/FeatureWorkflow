@@ -8,6 +8,7 @@ import os
 from collections import defaultdict, Counter
 import feature_config as fconf
 import config
+import re
 
 class LoadFeatures:
     def __init__(self):
@@ -25,10 +26,6 @@ class LoadFeatures:
         pair_features = set(json.load(open(config.path + "features/pair_features.json")))
 
         all_features = num_features | pair_features
-        # fea_names = prettytable.PrettyTable()
-        # fea_names.add_column("feature_name", sorted(all_features))
-        # fea_names.align["feature_name"] = "l" 
-        # print fea_names
         if return_list:
             return sorted(all_features)
 
@@ -53,17 +50,28 @@ class LoadFeatures:
         self.fea_file_dic = json.load(open(config.path + "config/feature_file_dict.json"))
         self.show_features(return_list=False)
         
-    def load_features(self, flist, key="u", idlist=None):
+    def load_features(self, flist, key="u", idlist=None, target=False, prefix=""):
         """
             key: "u" or "i"
             flist: [features1, features2,,,,] must match key!
+
+            for target:
+                idlist = [t1, t2,...]
+                target = True
+                prefix = "04_30"..
         """
         # load files
         ffdic = defaultdict(list)
         for tfea in flist:
             if tfea in self.vec_fea_dic:
+                if target:
+                    ffdic[re.sub(r"/features/", "/features_target/" + prefix + "_", self.fea_file_dic[tfea])].extend(self.vec_fea_dic[tfea])
+                    continue
                 ffdic[self.fea_file_dic[tfea]].extend(self.vec_fea_dic[tfea])
             else:
+                if target:
+                    ffdic[re.sub(r"/features/", "/features_target/" + prefix + "_", self.fea_file_dic[tfea])].append(tfea)
+                    continue
                 ffdic[self.fea_file_dic[tfea]].append(tfea)
         
         for tf in ffdic.keys():
@@ -94,28 +102,38 @@ class LoadFeatures:
         
         return df_ans
     
-    def add_newfeatures_from_pandas(self, df_feas, fname, ftype="num"):
+    def add_newfeatures_from_pandas(self, df_feas, fname, ftype="num", target=False, prefix=""):
 
-        df_feas.to_csv(self.fea_file_addr + fname, index=None, sep="\t")    
+        if target:
+            if not os.path.exists(self.fea_file_addr + fname):
+                print "file name is illegal: ", fname
+                return
+            outfile = re.sub(r"/features/", "/features_target/" + prefix + "_", self.fea_file_addr + fname)
+            if os.path.exists(outfile):
+                print "file is already existed !", outfile
+        else:
+            outfile = self.fea_file_addr + fname
 
-        fea_files_addr = config.path + "config/feature_files.json"
+        df_feas.to_csv(outfile, index=None, sep="\t")    
 
-        with open(fea_files_addr) as inf:
-            fea_files = json.load(inf)
+        if not target:
+            fea_file_config = config.path + "config/feature_files.json"
+            with open(fea_file_config) as inf:
+                fea_files = json.load(inf)
 
-        if ftype == "num":
-            fea_files['num_features'].append(self.fea_file_addr + fname)
-        elif ftype == "vec":
-            fea_files['vec_features'].append(self.fea_file_addr + fname)
+            if ftype == "num":
+                fea_files['num_features'].append(self.fea_file_addr + fname)
+            elif ftype == "vec":
+                fea_files['vec_features'].append(self.fea_file_addr + fname)
 
-        fea_files['num_features'] = list(set(fea_files['num_features']))
-        fea_files['vec_features'] = list(set(fea_files['vec_features']))
+            fea_files['num_features'] = list(set(fea_files['num_features']))
+            fea_files['vec_features'] = list(set(fea_files['vec_features']))
 
-        json.dump(fea_files, open(fea_files_addr, 'w'), indent=True)
-        os.system("python " + config.path + "config/BuildFeatureFileDict.py")
-        
-        self.reload_config()
-        return "saved feature file"
+            json.dump(fea_files, open(fea_file_config, 'w'), indent=True)
+            os.system("python " + config.path + "config/BuildFeatureFileDict.py")
+            
+            self.reload_config()            
+        return "saved feature file"        
     
 
 class PairFeatures:
@@ -146,7 +164,6 @@ class PairFeatures:
             "p_region_match": (["ori_u_region"], ["ori_i_region"], self.__attribute_match),
             
             "p_career_level_gap": (["u_career_level"], ["i_career_level"], self.__career_level_gap),
-            # "p_region_adjoin": (["ori_u_region"], ["ori_i_region"])
 
             "p_country_hisratio": (["u_his_ctyratio"], ['ori_i_country'], lambda tdf: self.__cal_hisratio(tdf, "u_his_ctyratio", "ori_i_country", "p_country_hisratio")),
             "p_disciplineid_hisratio": (["u_his_dplratio"], ['ori_i_discipline_id'], lambda tdf: self.__cal_hisratio(tdf, "u_his_dplratio", "ori_i_discipline_id", "p_disciplineid_hisratio")),
@@ -248,9 +265,6 @@ class Convert2feature:
                     print "Error! ", tf
             print "init with %d user features, %d item features, %d pair features, Total: %d" %(len(self.ufeatures), len(self.ifeatures), len(self.pfeatures), len(feature_list))
             self.features_names = feature_list
-
-        df_target_user = pd.read_csv(config.path + "targetUsers.csv", sep="\t")
-        self.target_users = list(df_target_user.iloc[:,0])
                     
         # find feature needed
         self.pf = PairFeatures()
@@ -267,13 +281,32 @@ class Convert2feature:
         
         # init df_ans
         self.df_ans = None
+
+        self.target_users = []
+        self.target_items = []
         
     def get_features_name(self):
         return self.features_names
 
+    def add_target_users(self, prefix=""):
+        df_target_user = pd.read_csv(config.path + "target/" + prefix + "_targetUsers.csv", header=None, sep="\t")
+        self.target_users = list(df_target_user.iloc[:,0])
+        print "Added", len(self.target_users), "target users!"
+
+    def add_target_items(self, prefix=""):
+        # load targetitem_ids
+        df_target_item = pd.read_csv(config.path + "target/" + prefix + "_targetItems.csv", header=None, sep="\t")
+        self.target_items = list(df_target_item.iloc[:,0])
+        print "Added", len(self.target_items), "target items!"
+
+        # load targetitem_features
+        loadf = LoadFeatures()
+        self.df_i = loadf.load_features(self.ifeatures, key="i", idlist=self.target_items, target=True, prefix=prefix)
+        print "Loaded targetItem features!"
+
+
     def convert_by_itemid(self, itemid, target_users=None, mode="numpy"):
         # user_features
-        
         if not target_users:
             target_users = self.target_users
 
