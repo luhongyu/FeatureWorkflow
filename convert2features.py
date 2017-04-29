@@ -3,7 +3,6 @@
 import pandas as pd
 import numpy as np
 import json
-import prettytable
 import time
 import os
 from collections import defaultdict, Counter
@@ -46,6 +45,9 @@ class LoadFeatures:
         print "---------- new feature files ----------\n"
         print feafiles
         json.dump(feafiles, open(config.path + "config/feature_files.json", "w"))
+        os.system("python " + config.path + "config/BuildFeatureFileDict.py")
+        
+        self.reload_config()
         
     def reload_config(self):
         self.fea_file_dic = json.load(open(config.path + "config/feature_file_dict.json"))
@@ -105,6 +107,9 @@ class LoadFeatures:
             fea_files['num_features'].append(self.fea_file_addr + fname)
         elif ftype == "vec":
             fea_files['vec_features'].append(self.fea_file_addr + fname)
+
+        fea_files['num_features'] = list(set(fea_files['num_features']))
+        fea_files['vec_features'] = list(set(fea_files['vec_features']))
 
         json.dump(fea_files, open(fea_files_addr, 'w'), indent=True)
         os.system("python " + config.path + "config/BuildFeatureFileDict.py")
@@ -244,7 +249,7 @@ class Convert2feature:
             print "init with %d user features, %d item features, %d pair features, Total: %d" %(len(self.ufeatures), len(self.ifeatures), len(self.pfeatures), len(feature_list))
             self.features_names = feature_list
 
-        df_target_user = pd.read_csv(config.path + "dataset/origindataset/targetUsers.csv", sep="\t")
+        df_target_user = pd.read_csv(config.path + "targetUsers.csv", sep="\t")
         self.target_users = list(df_target_user.iloc[:,0])
                     
         # find feature needed
